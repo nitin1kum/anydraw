@@ -9,13 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.7",
+    "@repo/common": "workspace:*",
     "@repo/ui": "workspace:*",
     "axios": "^1.7.9",
     "lucide-react": "^0.473.0",
     "next": "15.1.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss-animate": "^1.0.7"
+    "svg.js": "^2.7.1",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -9,7 +9,7 @@ export function RoomCanvas({roomId}: {roomId: string}) {
     const [socket, setSocket] = useState<WebSocket | null>(null);
 
     useEffect(() => {
-        const ws = new WebSocket(`${WS_URL}?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3Njg0NDMwYy04YzNiLTRlZmQtOGFmNS00YzQwMzdmNjJkYzMiLCJpYXQiOjE3MzcyOTg2NjV9.xacFop0s231DoUVeLZormeIbBmIRaXftTVVI6weIqFo`)
+        const ws = new WebSocket(`${WS_URL}?token=${localStorage.getItem("authToken")}`);
 
         ws.onopen = () => {
             setSocket(ws);
@@ -19,6 +19,19 @@ export function RoomCanvas({roomId}: {roomId: string}) {
             });
             console.log(data);
             ws.send(data)
+        }
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        }   
+        ws.onclose = () => {
+            setSocket(ws);
+            const data = JSON.stringify({
+                type: "leave_room",
+                roomId
+            });
+            console.log(data);
+            ws.send(data)
+            console.log("WebSocket connection closed");
         }
         
     }, [])
