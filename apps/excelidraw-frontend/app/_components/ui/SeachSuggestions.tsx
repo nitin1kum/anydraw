@@ -1,6 +1,5 @@
 import { Loader, PlusIcon, Share2 } from "lucide-react"
-import { useSetRecoilState } from "recoil"
-import { modalStatus, shareModal } from "../recoil/atoms"
+import { useState } from "react"
 
 interface SearchSuggestionsType{
     isLoading: boolean,
@@ -11,8 +10,9 @@ const SeachSuggestions : React.FC<SearchSuggestionsType> = ({
     isLoading,
     searchResults
 }) => {
-    const setAddModalStatus = useSetRecoilState(modalStatus)
-    const setShareModalStatus = useSetRecoilState(shareModal)
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+
     const defaultOptions = [
         {
             icon: <PlusIcon />,
@@ -28,12 +28,12 @@ const SeachSuggestions : React.FC<SearchSuggestionsType> = ({
 
     const handleAddMemory = () => {
         console.log("Adding memory clicked")
-        setAddModalStatus(true)
+        setIsAddModalOpen(true)
     }
 
     const handleShareMemory = () => {
         console.log("Share memory clicked")
-        setShareModalStatus(true)
+        setIsShareModalOpen(true)
     }
     return (
     <div className="absolute bg-blue-100 rounded-lg top-[50%] w-full h-fit pt-10 pb-4 px-5 flex gap-2 flex-col"> 
@@ -50,8 +50,7 @@ const SeachSuggestions : React.FC<SearchSuggestionsType> = ({
                             key={index}
                             className="p-2 cursor-pointer hover:bg-blue-200 rounded-md text-blue-300 hover:text-blur-400 transition-colors flex gap-2 shadow-md"
                         >
-                            
-                                {result.title}
+                            {result.title}
                         </div>
                     </a>
                 ))

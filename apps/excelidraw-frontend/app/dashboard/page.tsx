@@ -52,7 +52,7 @@ export default function DashboardPage() {
         setRooms(response.data.rooms ?? []);
       } catch (err: any) {
         if (axios.isCancel(err)) return;
-        setError("Failed to fetch rooms. Please try again.");
+        setError("Failed to fetch rooms. Please try again later.");
         console.error(err);
       } finally {
         setLoadingRooms(false);

@@ -8,7 +8,7 @@ import Input from '../_components/ui/Input';
 import {Button} from '../_components/ui/Button';
 import Alert from '../_components/ui/Alert';
 import { SigninSchema } from '../_components/ui/Schema';
-import Link from 'next/Link';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 interface FormErrors {
   username?: string;
@@ -56,7 +56,7 @@ const Signin = () => {
         if (error.response?.status === 411) {
             setErrors({ username: error.response.data.message || 'use differnet account' });
         } else {
-            setErrors({ general: 'An unexpected server error occurred.' });
+            setErrors({ general: 'wrong credential' });
         }
       } else {
         setErrors({ general: 'login failed. Please try again.' });
