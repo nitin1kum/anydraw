@@ -2,13 +2,19 @@ import { WebSocket, WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import { prismaClient } from "@repo/db/client";
+import http from "http";
 
-const wss = new WebSocketServer({ port: 8080 });
+const PORT = Number(process.env.PORT) || 8080;
+
+// Create HTTP server so Render can properly expose the WebSocket
+const server = http.createServer();
+const wss = new WebSocketServer({ server });
 
 interface User {
   ws: WebSocket;
   rooms: string[];
   userId: string;
+  lastPing?: number;
 }
 
 const users: User[] = [];
@@ -18,8 +24,7 @@ function checkUser(token: string): string | null {
   if (!token) return null;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    if (!decoded?.userId) return null;
-    return decoded.userId as string;
+    return decoded?.userId || null;
   } catch (e) {
     console.error("[AUTH] JWT verification failed:", e);
     return null;
@@ -34,13 +39,35 @@ function broadcastToRoom(roomId: string, payload: any) {
       try {
         u.ws.send(msg);
       } catch (e) {
-        console.warn("ws Broadcast failed for user:", u.userId, e);
+        console.warn(`[Broadcast] Failed for ${u.userId}:`, e);
       }
     }
   });
 }
 
-wss.on("connection", function connection(ws, request) {
+/** Heartbeat: keep track of active connections */
+function heartbeat() {
+  const now = Date.now();
+  for (let i = users.length - 1; i >= 0; i--) {
+    const user = users[i];
+    if (user && (!user.lastPing || now - user.lastPing > 45000)) {
+      console.log(`[PING] Terminating stale connection for ${user.userId}`);
+      try {
+        user.ws.terminate();
+      } catch {}
+      users.splice(i, 1);
+    } else {
+      try {
+        user?.ws.ping();
+      } catch {}
+    }
+  }
+}
+
+// Run heartbeat every 30 seconds
+setInterval(heartbeat, 30000);
+
+wss.on("connection", (ws, request) => {
   const url = request.url;
   if (!url) {
     ws.close();
@@ -52,164 +79,133 @@ wss.on("connection", function connection(ws, request) {
   const userId = checkUser(token);
 
   if (!userId) {
-    console.warn("ws Connection rejected: invalid token");
+    console.warn("[WS] Connection rejected: invalid token");
     ws.close();
     return;
   }
 
-  const user: User = { ws, rooms: [], userId };
+  const user: User = { ws, rooms: [], userId, lastPing: Date.now() };
   users.push(user);
-  console.log(`ws User connected: ${userId}, total users: ${users.length}`);
+  console.log(`[WS] User connected: ${userId} (total: ${users.length})`);
 
-  ws.on("message", async function message(data) {
+  ws.on("pong", () => (user.lastPing = Date.now()));
+
+  ws.on("message", async (data) => {
     let parsedData: any;
     try {
-      parsedData = typeof data === "string" ? JSON.parse(data) : JSON.parse(data.toString());
+      parsedData =
+        typeof data === "string"
+          ? JSON.parse(data)
+          : JSON.parse(data.toString());
     } catch (e) {
-      console.error("ws Invalid JSON received:", data);
+      console.error("[WS] Invalid JSON received:", data);
       return;
     }
 
     const { type } = parsedData;
     if (!type) return;
 
-    
-    // JOIN / LEAVE ROOM
-    
-    if (type === "join_room") {
-      user.rooms.push(String(parsedData.roomId));
-      console.log(`[ROOM] User ${user.userId} joined room ${parsedData.roomId}`);
-      return;
-    }
+    switch (type) {
+      case "join_room":
+        user.rooms.push(String(parsedData.roomId));
+        console.log(`[ROOM] ${user.userId} joined ${parsedData.roomId}`);
+        break;
 
-    if (type === "leave_room") {
-      user.rooms = user.rooms.filter((r) => r !== String(parsedData.roomId));
-      console.log(`[ROOM] User ${user.userId} left room ${parsedData.roomId}`);
-      return;
-    }
+      case "leave_room":
+        user.rooms = user.rooms.filter((r) => r !== String(parsedData.roomId));
+        console.log(`[ROOM] ${user.userId} left ${parsedData.roomId}`);
+        break;
 
-    
-    // CREATE SHAPE (chat)
-    
-    if (type === "chat") {
-      const roomId = parsedData.roomId;
-      const tempId = parsedData.tempId || null;
-      let message: string;
+      case "chat": {
+        const { roomId, tempId } = parsedData;
+        const messageContent = parsedData.shape
+          ? JSON.stringify({ shape: parsedData.shape })
+          : JSON.stringify({ message: parsedData.message });
 
-      if (parsedData.shape) {
-        message = JSON.stringify({ shape: parsedData.shape });
-      } else if (parsedData.message) {
-        message =
-          typeof parsedData.message === "string"
-            ? parsedData.message
-            : JSON.stringify(parsedData.message);
-      } else {
-        console.error("ws Missing shape/message in chat payload:", parsedData);
-        return;
-      }
+        try {
+          const saved = await prismaClient.chat.create({
+            data: { roomId: Number(roomId), message: messageContent, userId },
+          });
 
-      try {
-        const saved = await prismaClient.chat.create({
-          data: {
-            roomId: Number(roomId),
-            message,
-            userId,
-          },
-        });
+          console.log(`[DB] Shape stored with id ${saved.id} (room ${roomId})`);
 
-        console.log(`[DB] Shape stored with id ${saved.id} in room ${roomId}`);
-
-        // Extract shape JSON
-        const shapeObj = (() => {
+          let shapeObj = null;
           try {
-            const parsed = JSON.parse(message);
-            return parsed.shape || null;
-          } catch {
-            return null;
-          }
-        })();
+            const parsed = JSON.parse(messageContent);
+            shapeObj = parsed.shape || null;
+          } catch {}
 
-        broadcastToRoom(String(roomId), {
-          type: "chat",
-          id: saved.id, // DB id (Int)
-          tempId, // Echo back for replacement
-          shape: shapeObj,
-          roomId,
-        });
-      } catch (e) {
-        console.error("[DB] Error storing shape:", e);
-      }
-      return;
-    }
-
-    
-    // UPDATE SHAPE
-    
-    if (type === "update") {
-      const roomId = parsedData.roomId;
-      const shapeId = parsedData.id;
-      let shape = parsedData.shape;
-
-      try {
-        if (typeof shape === "string") shape = JSON.parse(shape);
-      } catch (e) {
-        console.error("ws Failed to parse shape JSON:", e);
+          broadcastToRoom(String(roomId), {
+            type: "chat",
+            id: saved.id,
+            tempId,
+            shape: shapeObj,
+            roomId,
+          });
+        } catch (e) {
+          console.error("[DB] Error storing shape:", e);
+        }
+        break;
       }
 
-      try {
-        await prismaClient.chat.update({
-          where: { id: Number(shapeId) },
-          data: { message: JSON.stringify({ shape }) },
-        });
-        console.log(`[DB] Shape ${shapeId} updated`);
-        broadcastToRoom(String(roomId), {
-          type: "update",
-          id: shapeId,
-          shape,
-          roomId,
-        });
-      } catch (e) {
-        console.error(`[DB] Error updating shape ${shapeId}:`, e);
+      case "update": {
+        const { roomId, id: shapeId, shape } = parsedData;
+        try {
+          await prismaClient.chat.update({
+            where: { id: Number(shapeId) },
+            data: { message: JSON.stringify({ shape }) },
+          });
+          console.log(`[DB] Shape ${shapeId} updated`);
+          broadcastToRoom(String(roomId), {
+            type: "update",
+            id: shapeId,
+            shape,
+            roomId,
+          });
+        } catch (e) {
+          console.error(`[DB] Error updating shape ${shapeId}:`, e);
+        }
+        break;
       }
-      return;
-    }
 
-    
-    // DELETE SHAPE
-    
-    if (type === "delete") {
-      const roomId = parsedData.roomId;
-      const shapeId = parsedData.id;
-
-      // Skip deleting pending client shapes
-      if (typeof shapeId !== "number" && isNaN(Number(shapeId))) {
-        console.warn(`ws Skipping delete for non-numeric id: ${shapeId}`);
-      } else {
+      case "delete": {
+        const { roomId, id: shapeId } = parsedData;
+        if (Number.isNaN(Number(shapeId))) {
+          console.warn(`[WS] Skipping delete for invalid ID: ${shapeId}`);
+          break;
+        }
         try {
           await prismaClient.chat.delete({ where: { id: Number(shapeId) } });
           console.log(`[DB] Shape ${shapeId} deleted`);
         } catch (e) {
           console.error(`[DB] Error deleting shape ${shapeId}:`, e);
         }
+        broadcastToRoom(String(roomId), {
+          type: "delete",
+          id: shapeId,
+          roomId,
+        });
+        break;
       }
 
-      broadcastToRoom(String(roomId), {
-        type: "delete",
-        id: shapeId,
-        roomId,
-      });
-      return;
+      default:
+        console.warn("[WS] Unknown message type:", type);
     }
-
-    console.warn("ws Unknown message type:", type);
   });
 
   ws.on("close", () => {
-    console.log(`ws User disconnected: ${user.userId}`);
-    const idx = users.findIndex((x) => x.ws === ws);
+    const idx = users.findIndex((u) => u.ws === ws);
     if (idx !== -1) users.splice(idx, 1);
-    console.log(`ws Active users: ${users.length}`);
+    console.log(
+      `[WS] User disconnected: ${user.userId} (active: ${users.length})`
+    );
+  });
+
+  ws.on("error", (err) => {
+    console.error(`[WS] Error for user ${user.userId}:`, err);
   });
 });
 
-console.log("ws WebSocket Server running on ws://localhost:8080");
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`[WS] Server running on ws://0.0.0.0:${PORT}`);
+});
