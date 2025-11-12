@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "turbo build",
-    "vercel-build": "corepack enable && corepack prepare pnpm@9.0.0 --activate && pnpm install && pnpm run build"
+    "vercel-build": "corepack enable && corepack prepare pnpm@9.0.0 --activate && pnpm install && pnpm run build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
