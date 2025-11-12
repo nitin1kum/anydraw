@@ -1,6 +1,11 @@
 {
   "name": "draw-app",
   "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": "22.x",
+    "pnpm": "9.x"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
