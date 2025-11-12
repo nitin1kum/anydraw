@@ -1,14 +1,13 @@
 {
   "name": "draw-app",
   "private": true,
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": "22.x",
     "pnpm": "9.x"
   },
   "scripts": {
     "build": "turbo build",
-    "vercel-build": "corepack enable && corepack prepare pnpm@9.0.0 --activate && pnpm install && pnpm run build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
@@ -23,9 +22,5 @@
     "prettier": "^3.2.5",
     "turbo": "^2.3.3",
     "typescript": "5.5.4"
-  },
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": ">=18"
   }
 }
