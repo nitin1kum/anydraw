@@ -2,11 +2,6 @@
   "name": "excelidraw-frontend",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": "22.x",
-    "pnpm": "9.x"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
