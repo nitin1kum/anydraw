@@ -1,6 +1,9 @@
 {
   "name": "draw-app",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
