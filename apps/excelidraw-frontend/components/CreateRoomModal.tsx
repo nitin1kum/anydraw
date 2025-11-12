@@ -19,7 +19,7 @@ export const CreateRoomModal = ({ isOpen, onClose, onRoomCreated }: CreateRoomMo
     const [error, setError] = useState<string | null>(null);
 
     // Use environment variable for API URL for better maintainability
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const API_BASE_URL = process.env.NEXT_PUBLIC_HTTP_BACKEND_URL || "http://localhost:3001";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

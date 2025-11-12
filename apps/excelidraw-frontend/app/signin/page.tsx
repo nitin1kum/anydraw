@@ -23,7 +23,7 @@ const Signin = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [showAlert, setShowAlert] = useState(false);
   
-  const BASE_URL = "http://localhost:3001"; // Ensure this URL is correct
+  const BASE_URL = process.env.NEXT_PUBLIC_HTTP_BACKEND_URL || "http://localhost:3001"; // Ensure this URL is correct
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

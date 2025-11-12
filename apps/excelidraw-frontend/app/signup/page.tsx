@@ -33,7 +33,7 @@ const SignupPage = () => {
   const [showAlert, setShowAlert] = useState(false);
 
   // Use an environment variable for your API URL
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const BASE_URL = process.env.NEXT_PUBLIC_HTTP_BACKEND_URL || "http://localhost:3001";
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
