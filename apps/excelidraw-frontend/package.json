@@ -8,7 +8,7 @@
     "pnpm": "9.x"
   },
   "scripts": {
-    "vercel-build": "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install && pnpm run build",
+    "vercel-build": "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --no-frozen-lockfile",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
