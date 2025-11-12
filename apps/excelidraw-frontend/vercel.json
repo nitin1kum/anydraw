@@ -1,14 +1,10 @@
 {
-  "projects": {
-    "excelidraw-frontend": {
-      "rootDirectory": "apps/excelidraw-frontend",
-      "framework": "nextjs",
-      "buildCommand": "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --no-frozen-lockfile && pnpm run build",
-      "installCommand": "",
-      "outputDirectory": ".next",
-      "env": {
-        "COREPACK_ENABLE_STRICT": "0"
-      }
-    }
+  "rootDirectory": "apps/excelidraw-frontend",
+  "framework": "nextjs",
+  "installCommand": "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "COREPACK_ENABLE_STRICT": "0"
   }
 }
